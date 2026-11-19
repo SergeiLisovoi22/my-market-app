@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import ru.yandex.practicum.mymarket.common.Money;
 
 @Entity
 @Table(name = "purchase_orders")
@@ -20,9 +21,11 @@ public class PurchaseOrder {
 
     protected PurchaseOrder() { }
 
-    public void addLine(long itemId, String title, long price, int count) {
-        lines.add(new OrderLine(this, itemId, title, price, count));
-        totalSum += price * count;
+    public void addLine(long itemId, String title, long price, int count, String imgPath) {
+        long lineTotal = Money.lineTotal(price, count);
+        long newTotal = Money.add(totalSum, lineTotal);
+        lines.add(new OrderLine(this, itemId, title, price, count, imgPath));
+        totalSum = newTotal;
     }
     public Long getId() { return id; }
     public long getTotalSum() { return totalSum; }

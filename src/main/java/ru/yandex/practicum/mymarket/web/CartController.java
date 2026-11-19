@@ -19,10 +19,9 @@ public class CartController {
     }
 
     @PostMapping("/cart/items")
-    public String change(@RequestParam long id, @RequestParam CartAction action, Model model) {
+    public String change(@RequestParam long id, @RequestParam CartAction action) {
         cart.change(id, action);
-        populate(model);
-        return "cart";
+        return "redirect:/cart/items";
     }
 
     private void populate(Model model) {

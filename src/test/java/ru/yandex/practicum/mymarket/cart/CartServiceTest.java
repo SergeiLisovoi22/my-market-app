@@ -18,7 +18,7 @@ class CartServiceTest {
     void setUp() {
         cartRepository = mock(CartLineRepository.class);
         itemRepository = mock(ItemRepository.class);
-        service = new CartService(cartRepository, itemRepository);
+        service = new CartService(cartRepository, itemRepository, mock(CartLockService.class));
     }
 
     @Test

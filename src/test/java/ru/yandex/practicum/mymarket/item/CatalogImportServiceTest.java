@@ -34,7 +34,7 @@ class CatalogImportServiceTest {
 
         assertThatThrownBy(() -> service.importCsv(csv))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Строка 3");
+                .hasMessageContaining("строке 3");
         verify(repository, never()).saveAll(any());
     }
 
@@ -44,6 +44,35 @@ class CatalogImportServiceTest {
 
         assertThatThrownBy(() -> service.importCsv(csv))
                 .isInstanceOf(IllegalArgumentException.class);
+        verify(repository, never()).saveAll(any());
+    }
+
+    @Test
+    void skipsEmptyLinesBeforeHeader() throws Exception {
+        var csv = file("\n\n\uFEFFtitle;description;price;imgPath\n"
+                + "Кружка;Описание;790;images/bottle.svg\n");
+        assertThat(service.importCsv(csv)).isEqualTo(1);
+        verify(repository).saveAll(any());
+    }
+
+    @Test
+    void rejectsTooLongTitleAndDoesNotSaveEvenValidRow() {
+        var csv = file("title;description;price;imgPath\n"
+                + "Нормальный;Описание;100;images/ball.svg\n"
+                + "X".repeat(256) + ";Описание;150;images/ball.svg\n");
+        assertThatThrownBy(() -> service.importCsv(csv))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("строке 3")
+                .hasMessageContaining("слишком длинное");
+        verify(repository, never()).saveAll(any());
+    }
+
+    @Test
+    void rejectsExcessivePriceBeforeSaving() {
+        var csv = file("Товар;Описание;1000000001;images/ball.svg\n");
+        assertThatThrownBy(() -> service.importCsv(csv))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("строке 1");
         verify(repository, never()).saveAll(any());
     }
 

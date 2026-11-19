@@ -41,4 +41,12 @@ class ItemsControllerTest {
                 .andExpect(redirectedUrlPattern("/items?*"));
         verify(cart).change(3L, CartAction.PLUS);
     }
+
+    @Test
+    void postItemDetailRedirectsToGet() throws Exception {
+        mvc.perform(post("/items/42").param("action", "PLUS"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/items/42"));
+        verify(cart).change(42L, CartAction.PLUS);
+    }
 }

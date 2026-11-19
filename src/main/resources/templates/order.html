@@ -15,18 +15,7 @@
 </div>
 
 <div class="container p-2">
-    <div class="row p-2">
-        <div class="col">
-            <div class="hstack gap-3">
-                <h2>
-                    <span class="badge text-bg-success">Витрина магазина</span>
-                </h2>
-                <a href="/orders" class="btn btn-secondary ms-auto bi bi-file-earmark-text"> Заказы</a>
-                <a href="/cart/items" class="btn btn-secondary bi bi-cart4"> Корзина</a>
-                <a href="/items" class="btn btn-secondary bi bi-arrow-left-square"> Главная</a>
-            </div>
-        </div>
-    </div>
+    <div th:replace="~{fragments/nav :: navigation}"></div>
     <div class="row p-2">
         <div class="col">
             <h2 th:text="${'Заказ №'+order.id()}"></h2>
@@ -38,6 +27,9 @@
                 <div class="card-header">
                     <b th:text="${item.title()}"></b>
                 </div>
+                <img th:if="${item.imgPath() != null and !item.imgPath().isBlank()}"
+                     class="p-2" th:src="${'/' + item.imgPath()}"
+                     alt="Изображение товара" width="220" height="220">
                 <ul class="list-group list-group-flush">
                     <li class="list-group-item" th:text="${item.count()}+' шт.'"/>
                     <li class="list-group-item" th:text="${item.price()}+' руб.'"/>

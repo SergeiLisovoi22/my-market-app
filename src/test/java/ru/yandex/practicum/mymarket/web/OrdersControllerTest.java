@@ -41,4 +41,16 @@ class OrdersControllerTest {
                 .andExpect(model().attribute("newOrder", true))
                 .andExpect(model().attributeExists("order"));
     }
+
+    @Test
+    void ordersListIncludesGrandTotal() throws Exception {
+        var all = List.of(new OrderDto(1L, List.of(), 1500L), new OrderDto(2L, List.of(), 700L));
+        when(orders.list()).thenReturn(all);
+        when(orders.totalOfOrders(all)).thenReturn(2200L);
+
+        mvc.perform(get("/orders"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("orders"))
+                .andExpect(model().attribute("totalOrdersSum", 2200L));
+    }
 }

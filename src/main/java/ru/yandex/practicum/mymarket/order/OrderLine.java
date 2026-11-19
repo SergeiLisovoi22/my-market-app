@@ -19,17 +19,23 @@ public class OrderLine {
     private long price;
     @Column(nullable = false)
     private int count;
+    // nullable для совместимости с заказами, созданными до добавления этого поля.
+    @Column(name = "img_path", length = 255)
+    private String imgPath;
 
     protected OrderLine() { }
-    public OrderLine(PurchaseOrder order, long itemId, String title, long price, int count) {
+
+    public OrderLine(PurchaseOrder order, long itemId, String title, long price, int count, String imgPath) {
         this.order = order;
         this.itemId = itemId;
         this.title = title;
         this.price = price;
         this.count = count;
+        this.imgPath = imgPath;
     }
     public long getItemId() { return itemId; }
     public String getTitle() { return title; }
     public long getPrice() { return price; }
     public int getCount() { return count; }
+    public String getImgPath() { return imgPath; }
 }

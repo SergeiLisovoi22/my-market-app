@@ -10,17 +10,7 @@
 
 <body class="bg-light">
     <div class="container p-2">
-        <div class="row p-2">
-            <div class="col">
-                <div class="hstack gap-3">
-                    <h2>
-                        <span class="badge text-bg-success">Витрина магазина</span>
-                    </h2>
-                    <a href="/cart/items" class="btn btn-secondary bi bi-cart4 ms-auto"> Корзина</a>
-                    <a href="/items" class="btn btn-secondary bi bi-arrow-left-square"> Главная</a>
-                </div>
-            </div>
-        </div>
+        <div th:replace="~{fragments/nav :: navigation}"></div>
         <div class="row p-2" th:each="order : ${orders}">
             <div class="col">
                 <div class="card">
@@ -36,6 +26,9 @@
                 </div>
             </div>
         </div>
+        <div class="row p-2"><div class="col">
+            <h3 th:text="${'Итого по всем заказам: ' + totalOrdersSum + ' руб.'}">Итого по всем заказам</h3>
+        </div></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>

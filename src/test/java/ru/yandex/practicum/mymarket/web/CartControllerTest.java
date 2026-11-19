@@ -36,8 +36,8 @@ class CartControllerTest {
         when(cart.getCart()).thenReturn(new CartDto(List.of(), 0));
 
         mvc.perform(post("/cart/items").param("id", "42").param("action", "DELETE"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("cart"));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/cart/items"));
         verify(cart).change(42L, CartAction.DELETE);
     }
 }

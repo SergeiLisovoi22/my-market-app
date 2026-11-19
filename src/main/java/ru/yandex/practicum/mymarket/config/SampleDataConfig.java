@@ -6,12 +6,17 @@ import org.springframework.context.annotation.Configuration;
 import ru.yandex.practicum.mymarket.item.ItemEntity;
 import ru.yandex.practicum.mymarket.item.ItemRepository;
 import java.util.List;
+import ru.yandex.practicum.mymarket.cart.CartMutex;
+import ru.yandex.practicum.mymarket.cart.CartMutexRepository;
 
 @Configuration
 public class SampleDataConfig {
     @Bean
-    ApplicationRunner sampleItems(ItemRepository repository) {
+    ApplicationRunner sampleItems(ItemRepository repository, CartMutexRepository mutexRepository) {
         return args -> {
+            if (!mutexRepository.existsById(1L)) {
+                mutexRepository.saveAndFlush(new CartMutex(1L));
+            }
             if (repository.count() != 0) return;
             repository.saveAll(List.of(
                 new ItemEntity("Бейсболка чёрная", "Удобная бейсболка для прогулок", "images/cap-black.svg", 1200),

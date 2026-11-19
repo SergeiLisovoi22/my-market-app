@@ -14,7 +14,9 @@ public class OrdersController {
 
     @GetMapping("/orders")
     public String list(Model model) {
-        model.addAttribute("orders", orders.list());
+        var allOrders = orders.list();
+        model.addAttribute("orders", allOrders);
+        model.addAttribute("totalOrdersSum", orders.totalOfOrders(allOrders));
         return "orders";
     }
 

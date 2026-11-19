@@ -10,17 +10,7 @@
 
 <body class="bg-light">
     <div class="container p-2">
-        <div class="row p-2">
-            <div class="col">
-                <div class="hstack gap-3">
-                    <h2>
-                        <span class="badge text-bg-success">Витрина магазина</span>
-                    </h2>
-                    <a href="/orders" class="btn btn-secondary ms-auto bi bi-file-earmark-text"> Заказы</a>
-                    <a href="/items" class="btn btn-secondary bi bi-arrow-left-square"> Главная</a>
-                </div>
-            </div>
-        </div>
+        <div th:replace="~{fragments/nav :: navigation}"></div>
         <div class="row p-2" th:each="item : ${items}">
             <div class="col">
                 <div class="card">

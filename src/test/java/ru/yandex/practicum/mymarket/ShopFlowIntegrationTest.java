@@ -69,8 +69,26 @@ class ShopFlowIntegrationTest {
         assertThat(orders.count()).isEqualTo(previousOrders + 1);
         var order = orders.findAllByOrderByIdDesc().getFirst();
         assertThat(order.getLines()).hasSize(2);
+        assertThat(order.getLines()).extracting("imgPath")
+                .contains(first.getImgPath(), second.getImgPath());
         assertThat(order.getTotalSum()).isEqualTo(first.getPrice() * 2 + second.getPrice());
         assertThat(cart.count()).isZero();
+    }
+
+    @Test
+    void invalidCsvDoesNotChangeCatalogAndShowsError() throws Exception {
+        long before = items.count();
+        String csv = "title;description;price;imgPath\n"
+                + "Хороший;Описание;100;images/ball.svg\n"
+                + "X".repeat(256) + ";Описание;100;images/ball.svg\n";
+        var file = new org.springframework.mock.web.MockMultipartFile("file", "catalog.csv", "text/csv",
+                csv.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+        mvc.perform(multipart("/admin/items/import").file(file))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/items/import"))
+                .andExpect(flash().attributeExists("error"));
+        assertThat(items.count()).isEqualTo(before);
     }
 
     @Test
