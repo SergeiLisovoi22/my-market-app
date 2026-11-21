@@ -1,28 +1,20 @@
 package ru.yandex.practicum.mymarket.cart;
 
-import jakarta.persistence.*;
-import ru.yandex.practicum.mymarket.item.ItemEntity;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 
-@Entity
-@Table(name = "cart_lines", uniqueConstraints = @UniqueConstraint(columnNames = "item_id"))
+@Table("cart_lines")
 public class CartLine {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "item_id", nullable = false)
-    private ItemEntity item;
-    @Column(nullable = false)
+    @Id private Long id;
+    @Column("item_id") private long itemId;
     private int count;
 
-    protected CartLine() { }
-
-    public CartLine(ItemEntity item, int count) {
-        this.item = item;
-        this.count = count;
-    }
+    public CartLine() { }
+    public CartLine(long itemId, int count) { this.itemId = itemId; this.count = count; }
     public Long getId() { return id; }
-    public ItemEntity getItem() { return item; }
+    public void setId(Long id) { this.id = id; }
+    public long getItemId() { return itemId; }
     public int getCount() { return count; }
     public void setCount(int count) { this.count = count; }
 }

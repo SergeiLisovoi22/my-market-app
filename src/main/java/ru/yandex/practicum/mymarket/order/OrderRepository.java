@@ -1,8 +1,8 @@
 package ru.yandex.practicum.mymarket.order;
 
-import java.util.List;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.repository.reactive.ReactiveCrudRepository;
+import reactor.core.publisher.Flux;
 
-public interface OrderRepository extends JpaRepository<PurchaseOrder, Long> {
-    List<PurchaseOrder> findAllByOrderByIdDesc();
+public interface OrderRepository extends ReactiveCrudRepository<PurchaseOrder, Long> {
+    Flux<PurchaseOrder> findAllByOrderByIdDesc();
 }
