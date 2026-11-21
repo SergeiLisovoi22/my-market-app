@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="navigation" class="row p-2">
+    <div class="col">
+        <div class="hstack gap-3">
+            <h2><span class="badge text-bg-success">Витрина магазина</span></h2>
+            <a th:href="@{/orders}" class="btn btn-secondary ms-auto">Заказы</a>
+            <a th:href="@{/cart/items}" class="btn btn-secondary">Корзина</a>
+            <a th:href="@{/items}" class="btn btn-secondary">Главная</a>
+            <a th:href="@{/admin/items/import}" class="btn btn-outline-secondary">Импорт CSV</a>
+        </div>
+    </div>
+</div>
+</body>
+</html>

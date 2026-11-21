@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Импорт товаров</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container py-4">
+  <div th:replace="~{fragments/nav :: navigation}"></div>
+  <h2>Импорт товаров из CSV</h2>
+  <p>Формат UTF-8: <code>title;description;price;imgPath</code>, без кавычек и символа «;» внутри полей.</p>
+  <div class="alert alert-success" th:if="${message}" th:text="${message}"></div>
+  <div class="alert alert-danger" th:if="${error}" th:text="${error}"></div>
+  <form method="post" enctype="multipart/form-data" th:action="@{/admin/items/import}">
+    <input class="form-control mb-3" type="file" name="file" accept=".csv,text/csv" required>
+    <button class="btn btn-primary" type="submit">Загрузить</button>
+    <a class="btn btn-secondary" href="/items">Вернуться на витрину</a>
+  </form>
+</body></html>
