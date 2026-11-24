@@ -1,6 +1,9 @@
 package ru.yandex.practicum.mymarket.cart;
 
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
+import ru.yandex.practicum.mymarket.item.ItemEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.reactive.TransactionalOperator;
@@ -23,14 +26,23 @@ public class CartService {
     }
 
     public Mono<CartDto> getCart() {
-        return lines.findAllByOrderByIdAsc()
-                .concatMap(line -> items.findById(line.getItemId())
-                        .map(item -> ItemDto.from(item, line.getCount())))
-                .collectList()
-                .map(found -> {
-                    long total = 0;
-                    for (ItemDto item : found) total = Money.add(total, Money.lineTotal(item.price(), item.count()));
-                    return new CartDto(found, total);
+        return lines.findAllByOrderByIdAsc().collectList()
+                .flatMap(cartLines -> {
+                    if (cartLines.isEmpty()) return Mono.just(new CartDto(List.of(), 0));
+                    List<Long> ids = cartLines.stream().map(CartLine::getItemId).toList();
+                    // Iterable overload: один SELECT ... IN (...), а не запрос для каждой позиции.
+                    return items.findAllById(ids).collectMap(ItemEntity::getId)
+                            .map(byId -> {
+                                List<ItemDto> found = new ArrayList<>(cartLines.size());
+                                long total = 0;
+                                for (CartLine line : cartLines) {
+                                    ItemEntity item = byId.get(line.getItemId());
+                                    if (item == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Товар не найден");
+                                    found.add(ItemDto.from(item, line.getCount()));
+                                    total = Money.add(total, Money.lineTotal(item.getPrice(), line.getCount()));
+                                }
+                                return new CartDto(List.copyOf(found), total);
+                            });
                 });
     }
 

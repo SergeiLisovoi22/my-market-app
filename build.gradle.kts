@@ -19,6 +19,7 @@ dependencies {
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("io.projectreactor:reactor-test")
+    testImplementation("org.jsoup:jsoup:1.18.3") // Проверка DOM отрендеренных HTML-страниц.
 }
 
 tasks.withType<Test> { useJUnitPlatform() }

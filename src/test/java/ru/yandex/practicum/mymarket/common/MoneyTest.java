@@ -1,7 +1,6 @@
 package ru.yandex.practicum.mymarket.common;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.web.server.ResponseStatusException;
 import static org.assertj.core.api.Assertions.*;
 
 class MoneyTest {
@@ -10,10 +9,10 @@ class MoneyTest {
         assertThat(Money.add(300, 200)).isEqualTo(500);
     }
     @Test void rejectsInvalidPriceAndQuantity() {
-        assertThatThrownBy(() -> Money.validatePrice(Money.MAX_PRICE + 1)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> Money.lineTotal(1, Money.MAX_QUANTITY + 1)).isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> Money.validatePrice(Money.MAX_PRICE + 1)).isInstanceOf(MoneyException.class);
+        assertThatThrownBy(() -> Money.lineTotal(1, Money.MAX_QUANTITY + 1)).isInstanceOf(MoneyException.class);
     }
     @Test void rejectsOverflow() {
-        assertThatThrownBy(() -> Money.add(Long.MAX_VALUE, 1)).isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> Money.add(Long.MAX_VALUE, 1)).isInstanceOf(MoneyException.class);
     }
 }

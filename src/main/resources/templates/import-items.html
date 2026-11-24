@@ -9,6 +9,7 @@
   <div th:replace="~{fragments/nav :: navigation}"></div>
   <h2>Импорт товаров из CSV</h2>
   <p>Формат UTF-8: <code>title;description;price;imgPath</code>, без кавычек и символа «;» внутри полей.</p>
+  <p th:text="${'Максимальный размер файла: ' + maxImportBytes + ' байт'}"></p>
   <div class="alert alert-success" th:if="${message}" th:text="${message}"></div>
   <div class="alert alert-danger" th:if="${error}" th:text="${error}"></div>
   <form method="post" enctype="multipart/form-data" th:action="@{/admin/items/import}">

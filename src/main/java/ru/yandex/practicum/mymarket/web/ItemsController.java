@@ -42,9 +42,9 @@ public class ItemsController {
             int pageNumber = FormValues.integer(form, "pageNumber", 1);
             int pageSize = FormValues.integer(form, "pageSize", 5);
             String url = UriComponentsBuilder.fromPath("/items")
-                    .queryParam("search", search).queryParam("sort", sort)
+                    .queryParam("search", "{search}").queryParam("sort", "{sort}")
                     .queryParam("pageNumber", pageNumber).queryParam("pageSize", pageSize)
-                    .build().encode().toUriString();
+                    .encode().buildAndExpand(search, sort).toUriString();
             return cart.change(id, action).thenReturn("redirect:" + url);
         });
     }

@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.reactive.TransactionalOperator;
@@ -19,12 +20,18 @@ public class CatalogImportService {
     private final ItemRepository repository;
     private final TransactionalOperator tx;
 
-    public CatalogImportService(ItemRepository repository, TransactionalOperator tx) {
-        this.repository = repository; this.tx = tx;
+    private final int maxBytes;
+
+    public CatalogImportService(ItemRepository repository, TransactionalOperator tx,
+                                @Value("${app.catalog-import.max-bytes:5242880}") int maxBytes) {
+        if (maxBytes <= 0) throw new IllegalArgumentException("Лимит импорта должен быть положительным");
+        this.repository = repository; this.tx = tx; this.maxBytes = maxBytes;
     }
 
+    public int maxBytes() { return maxBytes; }
+
     public Mono<Integer> importCsv(FilePart file) {
-        return DataBufferUtils.join(file.content(), 5 * 1024 * 1024)
+        return DataBufferUtils.join(file.content(), maxBytes)
                 .map(buffer -> {
                     try {
                         byte[] bytes = new byte[buffer.readableByteCount()];

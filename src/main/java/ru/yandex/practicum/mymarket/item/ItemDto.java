@@ -5,7 +5,4 @@ public record ItemDto(long id, String title, String description, String imgPath,
         return new ItemDto(item.getId(), item.getTitle(), item.getDescription(),
                 item.getImgPath(), item.getPrice(), count);
     }
-    public static ItemDto placeholder() {
-        return new ItemDto(-1, "", "", "", 0, 0);
-    }
 }

@@ -1,8 +1,6 @@
 package ru.yandex.practicum.mymarket.item;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -40,15 +38,9 @@ public class ItemService {
                     List<ItemDto> flat = tuple.getT1().stream()
                             .map(item -> ItemDto.from(item, tuple.getT3().getOrDefault(item.getId(), 0)))
                             .toList();
-                    List<List<ItemDto>> rows = new ArrayList<>();
-                    for (int i = 0; i < flat.size(); i += 3) {
-                        List<ItemDto> row = new ArrayList<>(flat.subList(i, Math.min(i + 3, flat.size())));
-                        while (row.size() < 3) row.add(ItemDto.placeholder());
-                        rows.add(row);
-                    }
                     boolean previous = page > 1;
                     boolean next = offset + flat.size() < tuple.getT2() && !flat.isEmpty();
-                    return new ItemPage(rows, query, validSort, new PagingDto(size, page, previous, next));
+                    return new ItemPage(flat, query, validSort, new PagingDto(size, page, previous, next));
                 });
     }
 
