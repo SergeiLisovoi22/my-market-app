@@ -1,77 +1,95 @@
 package ru.yandex.practicum.mymarket.cart;
 
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.ArrayList;
+import ru.yandex.practicum.mymarket.item.ItemEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.reactive.TransactionalOperator;
 import org.springframework.web.server.ResponseStatusException;
+import reactor.core.publisher.Mono;
 import ru.yandex.practicum.mymarket.common.Money;
 import ru.yandex.practicum.mymarket.item.ItemDto;
-import ru.yandex.practicum.mymarket.item.ItemEntity;
 import ru.yandex.practicum.mymarket.item.ItemRepository;
 
 @Service
 public class CartService {
-    private final CartLineRepository cartRepository;
-    private final ItemRepository itemRepository;
-    private final CartLockService lockService;
+    private final CartLineRepository lines;
+    private final ItemRepository items;
+    private final CartLockService lock;
+    private final TransactionalOperator tx;
 
-    public CartService(CartLineRepository cartRepository, ItemRepository itemRepository,
-                       CartLockService lockService) {
-        this.cartRepository = cartRepository;
-        this.itemRepository = itemRepository;
-        this.lockService = lockService;
+    public CartService(CartLineRepository lines, ItemRepository items, CartLockService lock,
+                       TransactionalOperator tx) {
+        this.lines = lines; this.items = items; this.lock = lock; this.tx = tx;
     }
 
-    @Transactional(readOnly = true)
-    public CartDto getCart() {
-        var items = cartRepository.findAllWithItems().stream()
-                .map(line -> ItemDto.from(line.getItem(), line.getCount()))
-                .toList();
-        long total = 0;
-        for (ItemDto item : items) {
-            total = Money.add(total, Money.lineTotal(item.price(), item.count()));
-        }
-        return new CartDto(items, total);
+    public Mono<CartDto> getCart() {
+        return lines.findAllByOrderByIdAsc().collectList()
+                .flatMap(cartLines -> {
+                    if (cartLines.isEmpty()) return Mono.just(new CartDto(List.of(), 0));
+                    List<Long> ids = cartLines.stream().map(CartLine::getItemId).toList();
+                    // Iterable overload: один SELECT ... IN (...), а не запрос для каждой позиции.
+                    return items.findAllById(ids).collectMap(ItemEntity::getId)
+                            .map(byId -> {
+                                List<ItemDto> found = new ArrayList<>(cartLines.size());
+                                long total = 0;
+                                for (CartLine line : cartLines) {
+                                    ItemEntity item = byId.get(line.getItemId());
+                                    if (item == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Товар не найден");
+                                    found.add(ItemDto.from(item, line.getCount()));
+                                    total = Money.add(total, Money.lineTotal(item.getPrice(), line.getCount()));
+                                }
+                                return new CartDto(List.copyOf(found), total);
+                            });
+                });
     }
 
-    @Transactional(readOnly = true)
-    public Map<Long, Integer> quantities() {
-        return cartRepository.findAllWithItems().stream()
-                .collect(Collectors.toMap(c -> c.getItem().getId(), CartLine::getCount));
+    public Mono<Map<Long, Integer>> quantities() {
+        return lines.findAll().collectMap(CartLine::getItemId, CartLine::getCount);
     }
 
-    @Transactional
-    public void change(long itemId, CartAction action) {
-        // При любой операции сначала блокируем одну и ту же строку, даже если товара ещё нет.
-        lockService.lock();
-        var existing = cartRepository.findByItemId(itemId);
-        if (action == CartAction.DELETE) {
-            existing.ifPresent(cartRepository::delete);
-            return;
+    public Mono<Void> change(long itemId, CartAction action) {
+        return lock.lock()
+                .then(lines.findByItemId(itemId)
+                        .flatMap(line -> updateExisting(line, action).thenReturn(true))
+                        .defaultIfEmpty(false)
+                        .flatMap(existed -> !existed && action == CartAction.PLUS
+                                ? addNew(itemId) : Mono.empty()))
+                // Если общая стоимость вышла за допустимые границы, откатить изменение.
+                .then(getCart())
+                .then()
+                .as(tx::transactional);
+    }
+
+    private Mono<Void> updateExisting(CartLine line, CartAction action) {
+        if (action == CartAction.DELETE || (action == CartAction.MINUS && line.getCount() <= 1)) {
+            return lines.delete(line);
         }
         if (action == CartAction.MINUS) {
-            existing.ifPresent(line -> {
-                if (line.getCount() <= 1) cartRepository.delete(line);
-                else line.setCount(line.getCount() - 1);
-            });
-            return;
+            line.setCount(line.getCount() - 1);
+            return lines.save(line).then();
         }
-        ItemEntity item = itemRepository.findById(itemId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Товар не найден"));
-        if (existing.isPresent()) {
-            CartLine line = existing.get();
-            if (line.getCount() >= Money.MAX_QUANTITY) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Максимум " + Money.MAX_QUANTITY + " шт. одного товара");
-            }
-            Money.lineTotal(item.getPrice(), line.getCount() + 1);
-            line.setCount(line.getCount() + 1);
-        } else {
-            Money.lineTotal(item.getPrice(), 1);
-            cartRepository.save(new CartLine(item, 1));
+        if (line.getCount() >= Money.MAX_QUANTITY) {
+            return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Максимум " + Money.MAX_QUANTITY + " шт. одного товара"));
         }
-        // Проверяем и суммарную стоимость корзины. При ошибке транзакция откатится.
-        getCart();
+        return items.findById(line.getItemId())
+                .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Товар не найден")))
+                .flatMap(item -> {
+                    Money.lineTotal(item.getPrice(), line.getCount() + 1);
+                    line.setCount(line.getCount() + 1);
+                    return lines.save(line);
+                }).then();
+    }
+
+    private Mono<Void> addNew(long itemId) {
+        return items.findById(itemId)
+                .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Товар не найден")))
+                .flatMap(item -> {
+                    Money.lineTotal(item.getPrice(), 1);
+                    return lines.save(new CartLine(itemId, 1));
+                }).then();
     }
 }

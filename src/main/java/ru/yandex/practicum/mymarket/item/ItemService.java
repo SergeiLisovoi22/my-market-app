@@ -1,57 +1,53 @@
 package ru.yandex.practicum.mymarket.item;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import ru.yandex.practicum.mymarket.cart.CartService;
 
 @Service
 public class ItemService {
-    private final ItemRepository itemRepository;
-    private final CartService cartService;
+    private final ItemRepository items;
+    private final CartService cart;
 
-    public ItemService(ItemRepository itemRepository, CartService cartService) {
-        this.itemRepository = itemRepository;
-        this.cartService = cartService;
+    public ItemService(ItemRepository items, CartService cart) {
+        this.items = items;
+        this.cart = cart;
     }
 
-    @Transactional(readOnly = true)
-    public ItemPage list(String search, String sort, int pageNumber, int pageSize) {
+    public Mono<ItemPage> list(String search, String sort, int pageNumber, int pageSize) {
         String requestedSort = sort == null ? "NO" : sort.toUpperCase();
-        Sort ordering = switch (requestedSort) {
-            case "ALPHA" -> Sort.by("title").ascending().and(Sort.by("id"));
-            case "PRICE" -> Sort.by("price").ascending().and(Sort.by("id"));
-            default -> Sort.by("id").ascending();
-        };
         String validSort = List.of("NO", "ALPHA", "PRICE").contains(requestedSort) ? requestedSort : "NO";
         int size = List.of(2, 5, 10, 20, 50, 100).contains(pageSize) ? pageSize : 5;
         int page = Math.max(1, pageNumber);
-        String query = search == null ? "" : search.trim();
-        var result = itemRepository.search(query, PageRequest.of(page - 1, size, ordering));
-        Map<Long, Integer> counts = cartService.quantities();
-        List<ItemDto> flat = result.getContent().stream()
-                .map(item -> ItemDto.from(item, counts.getOrDefault(item.getId(), 0)))
-                .toList();
-        List<List<ItemDto>> rows = new ArrayList<>();
-        for (int i = 0; i < flat.size(); i += 3) {
-            List<ItemDto> row = new ArrayList<>(flat.subList(i, Math.min(i + 3, flat.size())));
-            while (row.size() < 3) row.add(ItemDto.placeholder());
-            rows.add(row);
+        long offset = ((long) page - 1L) * size;
+        if (offset > Integer.MAX_VALUE) {
+            return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Указан слишком большой номер страницы"));
         }
-        return new ItemPage(rows, query, validSort,
-                new PagingDto(size, page, result.hasPrevious(), result.hasNext()));
+        String query = search == null ? "" : search.trim();
+        Flux<ItemEntity> found = switch (validSort) {
+            case "ALPHA" -> items.searchAlpha(query, size, offset);
+            case "PRICE" -> items.searchPrice(query, size, offset);
+            default -> items.searchDefault(query, size, offset);
+        };
+        return Mono.zip(found.collectList(), items.countMatching(query), cart.quantities())
+                .map(tuple -> {
+                    List<ItemDto> flat = tuple.getT1().stream()
+                            .map(item -> ItemDto.from(item, tuple.getT3().getOrDefault(item.getId(), 0)))
+                            .toList();
+                    boolean previous = page > 1;
+                    boolean next = offset + flat.size() < tuple.getT2() && !flat.isEmpty();
+                    return new ItemPage(flat, query, validSort, new PagingDto(size, page, previous, next));
+                });
     }
 
-    @Transactional(readOnly = true)
-    public ItemDto get(long id) {
-        var item = itemRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Товар не найден"));
-        return ItemDto.from(item, cartService.quantities().getOrDefault(id, 0));
+    public Mono<ItemDto> get(long id) {
+        return Mono.zip(items.findById(id)
+                        .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Товар не найден"))),
+                        cart.quantities())
+                .map(tuple -> ItemDto.from(tuple.getT1(), tuple.getT2().getOrDefault(id, 0)));
     }
 }
